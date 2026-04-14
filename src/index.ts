@@ -1,40 +1,44 @@
 import "dotenv/config";
-import { createServer } from "node:http";
+import express from 'express';
 import { prisma } from "./lib/prisma";
+import './events/auth.events';
+import authRoutes from './routes/auth';
 
 const port = Number(process.env.PORT ?? 4000);
 
-const server = createServer(async (req, res) => {
-  if (req.url === "/health") {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", database: "connected" }));
-    } catch {
-      res.writeHead(500, { "content-type": "application/json" });
-      res.end(JSON.stringify({ status: "error", database: "disconnected" }));
-    }
-    return;
-  }
+const app = express();
+app.use(express.json());
 
-  res.writeHead(200, { "content-type": "application/json" });
-  res.end(
-    JSON.stringify({
-      message: "DocuChat backend is running",
-      health: "/health",
-    }),
-  );
+app.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'ok', database: 'connected' });
+  } catch {
+    res.status(500).json({ status: 'error', database: 'disconnected' });
+  }
 });
+
+// Register auth routes
+app.use('/api/auth', authRoutes);
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'DocuChat backend is running',
+    health: '/health',
+  });
+});
+
+let server: ReturnType<typeof app.listen>;
 
 async function bootstrap() {
   await prisma.$connect();
-  server.listen(port, () => {
+  server = app.listen(port, () => {
     console.log(`DocuChat backend running on http://localhost:${port}`);
   });
 }
 
 bootstrap().catch(async (error) => {
-  console.error("Failed to start backend:", error);
+  console.error('Failed to start backend:', error);
   await prisma.$disconnect();
   process.exit(1);
 });
@@ -46,5 +50,5 @@ async function shutdown() {
   });
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

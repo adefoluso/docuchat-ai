@@ -20,6 +20,7 @@ model User {
   documents     Document[]
   conversations Conversation[]
   usageLogs     UsageLog[]
+  refreshTokens RefreshToken[]
 }
 
 
@@ -120,6 +121,19 @@ model AITrace {
 
   @@index([userId])
   @@index([operation])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id],onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 

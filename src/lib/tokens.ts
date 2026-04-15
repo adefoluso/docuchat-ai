@@ -1,11 +1,11 @@
 import jwt from 'jsonwebtoken';
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!;
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET as string;
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;
 
 interface TokenPayload {
-  sub: string;    // User ID
-  role: string;   // User role/tier
+  sub: string;
+  role: string;
   type: 'access' | 'refresh';
 }
 

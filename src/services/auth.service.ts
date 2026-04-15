@@ -8,6 +8,7 @@ import {
   verifyRefreshToken,
 } from '../lib/tokens';
 import crypto from 'crypto';
+import { ConflictError, UnauthorizedError } from '../lib/errors';
 
 
 export async function register(data: {
@@ -17,7 +18,7 @@ export async function register(data: {
   const existing = await prisma.user.findUnique({
     where: { email: data.email.toLowerCase().trim() },
   });
-  if (existing) throw new Error('Email already registered');
+  if (existing) throw new ConflictError('Email already registered');
 
   const passwordHash = await hashPassword(data.password);
   const user = await prisma.user.create({
@@ -48,12 +49,12 @@ export async function login(data: {
   // Same error for "user not found" and "wrong password"
   // This prevents user enumeration attacks
   if (!user || !user.isActive) {
-    throw new Error('Invalid credentials');
+    throw new UnauthorizedError('Invalid credentials');
   }
 
   const valid = await verifyPassword(data.password, user.passwordHash);
   if (!valid) {
-    throw new Error('Invalid credentials');
+    throw new UnauthorizedError('Invalid credentials');
   }
 
   // Generate tokens

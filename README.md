@@ -1,68 +1,105 @@
 # DocuChat Backend
 
-Docuchat AI.
+Lightweight backend for DocuChat (TypeScript + Prisma).
 
 **Stack**
 - Node.js
 - TypeScript
-- Prisma (SQLite by default in `prisma/schema.prisma`)
+- Prisma (SQLite by default)
 
-**Repository layout**
+Repository layout
 - `prisma/` — Prisma schema and migrations
-- `src/` — application entry and code
+- `src/` — application code
 
-## Prerequisites
+Prerequisites
 - Node.js 18+ and npm (or yarn)
 - Git
 
-## Setup (local development)
-1. Clone the repository
+Quickstart (local development)
+
+1) Clone the repository
 
 ```bash
 git clone <repo-url>
 cd docuchat-backend
 ```
 
-2. Install dependencies
+2) Install dependencies
 
 ```bash
 npm install
 ```
 
-3. Create an `.env` in the project root and set the database URL (example using SQLite):
+3) Create environment files
+
+- Create a development `.env` in the project root with at least:
 
 ```env
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="file:./prisma/dev.db"
+JWT_ACCESS_SECRET=replace-with-a-secret
+JWT_REFRESH_SECRET=replace-with-a-secret
 ```
 
-4. Generate the Prisma client
+- For tests, create `.env.test` (not committed) with test secrets:
+
+```env
+DATABASE_URL="file:./prisma/test.db"
+JWT_ACCESS_SECRET=test_access_secret
+JWT_REFRESH_SECRET=test_refresh_secret
+```
+
+4) Generate Prisma client
 
 ```bash
 npx prisma generate
 ```
 
-5. Apply migrations (creates `dev.db` and schema)
+5) Apply migrations (create the database + schema)
 
 ```bash
+# Apply migrations (recommended for CI / reproducible environments)
 npx prisma migrate deploy
-# or to apply and create a migration locally while developing:
-# npx prisma migrate dev
+
+# During development you can use:
+npx prisma migrate dev
 ```
 
-6. Start the app
+6) Seed the database (optional)
 
 ```bash
-npm run dev
+# Runs the seed command defined in prisma config (ts-node is used to run the seed)
+npx prisma db seed
 ```
 
-## Working with migrations
-- The project stores migrations under `prisma/migrations/`.
+7) Run the app
 
-> Important: Do NOT rename a migration that has already been applied to production databases. Instead, create a new migration that makes the desired changes.
+```bash
+# development (watch)
+npm run dev
 
-## Notes about the database
-- `prisma/schema.prisma` currently uses SQLite as the provider; you can switch to Postgres or MySQL by updating the datasource and `DATABASE_URL`.
+# production build + start
+npm run build
+npm start
+```
 
-## Troubleshooting
-- If Prisma complains about missing `DATABASE_URL`, ensure `.env` exists and has the correct value.
-- To inspect migration SQL, check `prisma/migrations/<migration-folder>/migration.sql`.
+Running tests
+- Tests use Vitest and a separate test SQLite at `prisma/test.db`.
+- Ensure `.env.test` exists with `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`.
+
+```bash
+NODE_ENV=test npm test
+```
+
+Notes & troubleshooting
+- If you see "secretOrPrivateKey must have a value", ensure `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` are set in your `.env` (or `.env.test` for tests).
+- If Prisma cannot find the database or migrations, check `DATABASE_URL` and run `npx prisma migrate deploy`.
+- To inspect migration SQL, open `prisma/migrations/<migration-folder>/migration.sql`.
+- Do not rename migrations that have already been applied to production databases; instead create a new migration.
+
+Helpful commands
+
+- Generate client: `npx prisma generate`
+- Apply migrations: `npx prisma migrate deploy`
+- Create a dev migration and apply: `npx prisma migrate dev`
+- Run seed: `npx prisma db seed`
+- Start dev server: `npm run dev`

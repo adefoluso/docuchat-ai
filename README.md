@@ -36,16 +36,16 @@ npm install
 
 ```env
 DATABASE_URL="file:./prisma/dev.db"
-JWT_ACCESS_SECRET=replace-with-a-secret
-JWT_REFRESH_SECRET=replace-with-a-secret
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
 ```
 
 - For tests, create `.env.test` (not committed) with test secrets:
 
 ```env
 DATABASE_URL="file:./prisma/test.db"
-JWT_ACCESS_SECRET=test_access_secret
-JWT_REFRESH_SECRET=test_refresh_secret
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
 ```
 
 4) Generate Prisma client

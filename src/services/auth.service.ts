@@ -9,6 +9,7 @@ import {
 } from '../lib/tokens';
 import crypto from 'crypto';
 import { ConflictError, UnauthorizedError } from '../lib/errors';
+import { cacheGetOrSet, CACHE_TTL, simpleKey } from '../lib/cache';
 
 
 export async function register(data: {
@@ -27,6 +28,20 @@ export async function register(data: {
       passwordHash,
     },
   });
+// Find the default role
+const defaultRole = await prisma.role.findFirst({
+  where: { isDefault: true },
+});
+
+if (defaultRole) {
+  await prisma.userRole.create({
+    data: {
+      userId: user.id,
+      roleId: defaultRole.id,
+    },
+  });
+}
+
 
 
 //   appEvents.emit(AUTH_EVENTS.USER_REGISTERED, {
@@ -153,5 +168,64 @@ export async function logout(rawRefreshToken: string) {
   });
 }
 
+export async function getUserPermissions(userId: string) {
+  const cacheKey = simpleKey('permissions', userId);
+  
+  return cacheGetOrSet(
+    cacheKey,
+    async () => {
+      console.log(`Fetching permissions for user ${userId} from database`);
+      
+      const user = await prisma.user.findFirst({
+        where: { id: userId, deletedAt: null },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true
+        }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Define permissions based on role
+      const permissions = {
+        // Basic permissions for all users
+        read: true,
+        write: true,
+        
+        // Role-specific permissions
+        admin: user.role === 'admin',
+        moderator: user.role === 'admin' || user.role === 'moderator',
+        
+        // Resource-specific permissions
+        canDeleteDocuments: user.role === 'admin',
+        canManageUsers: user.role === 'admin',
+        canViewAnalytics: user.role === 'admin' || user.role === 'moderator',
+        
+        // User metadata
+        userId: user.id,
+        userRole: user.role,
+        userCreatedAt: user.createdAt
+      };
+
+      return permissions;
+    },
+    CACHE_TTL.PERMISSIONS // 5 minutes TTL
+  );
+}
+
+
+export async function invalidateUserPermissionsCache(userId: string) {
+  const cacheKey = simpleKey('permissions', userId);
+  const { cacheDel } = await import('../lib/cache.js');
+  
+  const deleted = await cacheDel(cacheKey);
+  console.log(`Invalidated permissions cache for user ${userId}: ${deleted ? 'success' : 'failed'}`);
+  
+  return deleted;
+}
 
 

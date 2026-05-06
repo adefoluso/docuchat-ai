@@ -1,42 +1,48 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from "jsonwebtoken"
 import { verifyAccessToken } from '../lib/tokens';
+import { UnauthorizedError } from "../lib/errors"
+import { prisma } from "../lib/prisma"
 
 // Extend Express Request to include user
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; role: string };
+      user?: { id: string; sub:string; role: string };
     }
   }
 }
 
-export function authenticate(
+export const authenticate = async(
   req: Request, res: Response, next: NextFunction
-) {
+) => {
   const header = req.headers.authorization;
 
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
-  const token = header.split(' ')[1];
+ const token = req.headers.authorization?.split(" ")[1]
 
-  try {
-    const payload = verifyAccessToken(token);
+   if (!token) throw new UnauthorizedError()
 
-    // Make sure it's an access token, not a refresh token
-    if (payload.type !== 'access') {
-      return res.status(401).json({ error: 'Invalid token type' });
-    }
+ // Check if token is blacklisted
+ const blacklistedToken = await prisma.blacklistedToken.findUnique({
+  where: { token }
+ })
 
-    // Attach user context to the request
-    req.user = { id: payload.sub, role: payload.role };
-    next();
+  if (blacklistedToken) {
+  throw new UnauthorizedError()
+ }
 
-  } catch (error: any) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+  const decoded = jwt.verify(
+  token,
+  process.env.JWT_ACCESS_SECRET!
+) as { sub: string; role?: string; [key: string]: any }
+
+ req.user = {
+  id: decoded.sub,
+  sub: decoded.sub,
+  role: decoded.role ?? 'user',
+ }
 }
